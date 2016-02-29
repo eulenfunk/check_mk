@@ -14,7 +14,7 @@ fastd_peer_limit=$(grep 'peer limit' /etc/fastd/client/fastd.conf | cut -d ' ' -
 fastd_clients=$(/etc/fastd/fastd-statistics.py -s /tmp/fastd.sock | grep Clients | cut -d ' ' -f 3);
 dhcp_leases=$(grep "^lease" /var/lib/dhcp/dhcpd.leases |sort |uniq |wc -l);
 CpR=$(echo "scale=2 ; $bat_clients/$bat_router" | bc);
-VPN_Ratio=$(echo "scale=2 ; $bat_router/$fastd_clients" | bc);
+#VPN_Ratio=$(echo "scale=2 ; $bat_router/$fastd_clients" | bc);
 
 #Output
 ##Batman
@@ -32,4 +32,4 @@ echo "0 Fastd_Clients Clients=$fastd_clients;10:150;5:200;"
 echo "P DHCP-Leases Leases=$dhcp_leases;10:8000;5:10000;"
 ##FF
 echo "P Clients-per-Router Ratio=$CpR;0.5:5;0.1:10;"
-echo "P VPNs-per-Router Ratio=$VPN_Ratio;0.3:0.9;0.2:1;"
+#echo "P VPNs-per-Router Ratio=$VPN_Ratio;0.3:0.9;0.2:1;"
