@@ -6,7 +6,7 @@ bgp4_sessions_up=$(birdc s p|grep BGP|grep -c up)
 bgp6_sessions_up=$(birdc6 s p|grep BGP|grep -c up)
 conntrack=$(conntrack -C);
 conntrack_limit=$(sysctl -a |grep net.nf_conntrack_max|cut -d ' ' -f 3);
-conntrack_warning=$(($conntrack_limit - 10000));
+conntrack_warning=$(($conntrack_limit - 2000));
 
 #Output
 ##BGP
