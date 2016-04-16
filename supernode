@@ -1,35 +1,59 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
 
+bat_interfaces=$(ip l|grep -F 'pfifo_fast master' | sed -r -e 's/.+pfifo_fast master //' -e 's/ state .+//')
+
 #Get data
 bat_version=$(batctl -v);
-bat_gateways=$(($(batctl gwl|wc -l)-1));
-bat_router=$(($(batctl o|wc -l)-3));
-bat_clients=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/bat0/transtable_global);
-bat_ips=$(($(batctl dc|wc -l)-2));
-bat_ips_wrong=$(($(batctl dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cut -d ':' -f 2|cut -d '.' -f 1))-2));
 fastd_version=$(fastd -v|cut -d ' ' -f 2);
-fastd_inst=$(netstat -tulpn|grep -c fastd);
-fastd_peer_limit=$(grep 'peer limit' /etc/fastd/client/fastd.conf | cut -d ' ' -f 3 | cut -d ';' -f 1);
-fastd_clients=$(/etc/fastd/fastd-statistics.py -s /tmp/fastd.sock | grep Clients | cut -d ' ' -f 3);
+
+declare -A bat_gateways bat_router bat_clients bat_ips bat_ips_wrong fastd_inst fastd_peer_limit CpR
+
+for intf in $bat_interfaces; do
+  tap_device=$(ip l |grep "master $intf" | sed -r -e 's/^[0-9]+: //' -e 's/: .+//')
+  fastd_config=$(grep -F \"$tap_device\" /etc/fastd/*/fastd.conf|cut -d: -f1)
+
+  bat_gateways[$intf]=$(($(batctl -m $intf gwl|wc -l)-1));
+  bat_router[$intf]=$(($(batctl -m $intf o|wc -l)-3));
+  bat_clients[$intf]=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/$intf/transtable_global);
+  bat_ips[$intf]=$(($(batctl -m $intf dc|wc -l)-2));
+  bat_ips_wrong[$intf]=$(($(batctl -m $intf dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cut -d ':' -f 2|cut -d '.' -f 1))-2));
+  fastd_inst[$intf]=$(ps aux|grep "/usr/bin/fastd .* ${fastd_config[$intf]}" |grep -Fvc ' grep ')
+  fastd_peer_limit[$intf]=$(grep -F 'peer limit' ${fastd_config[$intf]} | cut -d ' ' -f 3 | cut -d ';' -f 1);
+  CpR[$intf]=$(echo "scale=2 ; ${bat_clients[$intf]}/${bat_router[$intf]}" | bc);
+done
+
+#Neanderfunk fastd_clients=$(/etc/fastd/fastd-statistics.py -s /tmp/fastd.sock | grep Clients | cut -d ' ' -f 3);
 dhcp_leases=$(grep "^lease" /var/lib/dhcp/dhcpd.leases |sort |uniq |wc -l);
-CpR=$(echo "scale=2 ; $bat_clients/$bat_router" | bc);
 #VPN_Ratio=$(echo "scale=2 ; $bat_router/$fastd_clients" | bc);
 
 #Output
 ##Batman
 echo "0 Batman-Version Version=$bat_version;"
-echo "P Batman-Gateways Gateways=$bat_gateways;3;5;"
-echo "P Batman-Router Router=$bat_router;10:450;5:500;"
-echo "P Batman-Clients Clients=$bat_clients;5:2000;0:25000; $bat_clients Clients";
-echo "P Batman-IPs IP-Adressen=$bat_ips|Falsche-Adressen=$bat_ips_wrong;5;50;";
-##Fastd
-echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
-echo "0 Fastd_Instanzen Instanzen=$fastd_inst;0:5;"
-echo "P Fastd_Client_Peer_limit Limit=$fastd_peer_limit;50:500;0:1000;"
-echo "0 Fastd_Clients Clients=$fastd_clients;10:150;5:200;"
+
+if echo $bat_interfaces |grep -qF ' '; then
+  multiple_interfaces=false
+else
+  multiple_interfaces=true
+fi
+
+for intf in $bat_interfaces; do
+  if [ $multiple_interfaces ]; then
+    suffix_label=" ($intf)"
+  fi
+
+  echo "P Batman-Gateways Gateways$suffix_label=${bat_gateways[$intf]};3;5;"
+  echo "P Batman-Router Router$suffix_label=${bat_router[$intf]};10:450;5:500;"
+  echo "P Batman-Clients Clients$suffix_label=${bat_clients[$intf]};5:2000;0:25000; ${bat_clients[$intf]} Clients";
+  echo "P Batman-IPs IP-Adressen$suffix_label=${bat_ips[$intf]}|Falsche-Adressen=${bat_ips_wrong[$intf]};5;50;";
+  ##Fastd
+  echo "0 Fastd_Instanzen Instanzen$suffix_label=${fastd_inst[$intf]};0:5;"
+  echo "P Fastd_Client_Peer_limit Limit$suffix_label=${fastd_peer_limit[$intf]};50:500;0:1000;"
+  #Neanderfunk echo "0 Fastd_Clients Clients$suffix_label=${fastd_clients[$intf]};10:150;5:200;"
+  ##FF
+  echo "P Clients-per-Router Ratio$suffix_label=${CpR[$intf]};0.5:5;0.1:10;"
+done
+echo "0 Fastd_Version Version$suffix_label=$fastd_version; Fastd $fastd_version ";
 ##DHCP
 echo "P DHCP-Leases Leases=$dhcp_leases;10:8000;5:10000;"
-##FF
-echo "P Clients-per-Router Ratio=$CpR;0.5:5;0.1:10;"
 #echo "P VPNs-per-Router Ratio=$VPN_Ratio;0.3:0.9;0.2:1;"
