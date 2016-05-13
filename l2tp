@@ -1,3 +1,4 @@
+#!/bin/bash
 #/usr/lib/check_mk_agent/local
 
 #Get data
@@ -5,5 +6,5 @@ l_tunnel=$(ip a |grep l2tp|grep tunneldigger -c);
 tunneldigger=$(ifconfig|grep tunneldigger -c);
 
 #Output
-echo "0 LTunnel=$l_tunnel;3:50;0:100;"
-echo "P Tunneldigger Tunneldigger=$tunneldigger;0:10;0:10;"
+echo "0 Tunneldigger Tunneldiggerbridge=$tunneldigger;1;"
+echo "P L2TP Clients=$l_tunnel;1:30;0:80;"
