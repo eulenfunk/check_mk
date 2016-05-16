@@ -1,0 +1,12 @@
+#!/bin/bash
+#/usr/lib/check_mk_agent/local
+
+#Get data
+px_version=$(pveversion);
+px_vms_sum=$(($(qm list|wc -l)-1));
+px_vms_stopped=$(qm list|grep -c stopped);
+px_vms_started=$(qm list|grep -c running);
+cpu_temp=$(sensors|grep Core|cut -d ' ' -f 1,2,9,13,16|tr ':' '='|sed s/' '/''/g|sed s/'+'/''/|sed s/'°C,+'/';'/g|sed s/'°C+'/';'/|sed s/'°C)'/''/|tr '\n' '#'|sed s/'#C'/'|C'/g|sed s/'#'/''/g);
+#Output
+echo "0 Proxmox_Version Version=$px_version;"
+echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
