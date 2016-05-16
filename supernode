@@ -11,13 +11,13 @@ bat_ips_wrong=$(($(sudo batctl dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cu
 fastd_version=$(fastd -v|cut -d ' ' -f 2);
 fastd_inst=$(netstat -tulpn|grep -c fastd);
 fastd_peer_limit=$(grep 'peer limit' /etc/fastd/client/fastd.conf | cut -d ' ' -f 3 | cut -d ';' -f 1);
-fastd_clients=$(nc -U $(cat /etc/fastd/client/fastd.conf|grep status\ socket|rev|cut -d" " -f1|cut -b3-999|rev|cut -b2-999)|grep '"established"' -o|wc -l)
-dhcp_leases=$(grep "^lease" /var/lib/dhcp/dhcpd.leases |sort |uniq |wc -l);
+fastd_clients=$(nc -U /tmp/fastd.sock|grep '"established"' -o|wc -l);
 kernel=$(uname -r);
+release=$(lsb_release -ds);
 
 #Output
 ##Batman
-echo "0 Batman-Version Version=$bat_version;"
+echo "0 Batman-Version Version=$bat_version; $bat_version"
 echo "P Batman-Gateways Gateways=$bat_gateways;3;5;"
 echo "P Batman-Router Router=$bat_router;10:450;5:500;"
 echo "P Batman-Clients Clients=$bat_clients;5:2000;0:25000; $bat_clients Clients";
@@ -27,9 +27,5 @@ echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
 echo "P Fastd_Instanzen Instanzen=$fastd_inst;0:3;0:5;"
 echo "P Fastd_Client_Peer_limit Limit=$fastd_peer_limit;50:500;0:1000;"
 echo "P Fastd_Clients Clients=$fastd_clients;10:150;5:200;"
-##DHCP
-echo "0 DHCP-Leases Leases=$dhcp_leases;"
 ##System
-echo "0 Kernel=$kernel;"
-
-
+echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
