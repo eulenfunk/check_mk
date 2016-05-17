@@ -9,9 +9,6 @@ bat_clients=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/bat0/transtabl
 bat_ips=$(($(batctl dc|wc -l)-2));
 bat_ips_wrong=$(($(sudo batctl dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cut -d ':' -f 2|cut -d '.' -f 1))-2));
 fastd_version=$(fastd -v|cut -d ' ' -f 2);
-fastd_inst=$(netstat -tulpn|grep -c fastd);
-fastd_peer_limit=$(grep 'peer limit' /etc/fastd/client/fastd.conf | cut -d ' ' -f 3 | cut -d ';' -f 1);
-fastd_clients=$(nc -U $(cat /etc/fastd/client/fastd.conf|grep status\ socket|rev|cut -d" " -f1|cut -b3-999|rev|cut -b2-999)|grep '"established"' -o|wc -l)
 kernel=$(uname -r);
 release=$(lsb_release -ds);
 
@@ -24,8 +21,6 @@ echo "P Batman-Clients Clients=$bat_clients;5:2000;0:25000; $bat_clients Clients
 echo "P Batman-IPs IP-Adressen=$bat_ips|Falsche-Adressen=$bat_ips_wrong;5;50;";
 ##Fastd
 echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
-echo "P Fastd_Instanzen Instanzen=$fastd_inst;0:3;0:5;"
-echo "P Fastd_Client_Peer_limit Limit=$fastd_peer_limit;50:500;0:1000;"
-echo "P Fastd_Clients Clients=$fastd_clients;10:150;5:200;"
+list=$(ls -F /etc/fastd|grep /|cut -d '/' -f 1);for i in $list; do clients=$(nc -U $(cat /etc/fastd/$i/fastd.conf|grep 'status socket'|cut -d '"' -f 2)|grep '"established"' -o|wc -l); interface=$(cat /etc/fastd/$i/fastd.conf|grep interface|cut -d '"' -f 2); mtu=$(cat /etc/fastd/$i/fastd.conf|grep mtu|cut -d ' ' -f 2|cut -d ';' -f1);port=$(cat /etc/fastd/$i/fastd.conf|grep bind|cut -d ':' -f 2|cut -d ' ' -f1);limit=$(cat /etc/fastd/$i/fastd.conf|grep 'peer limit'|cut -d ' ' -f 3|cut -d ';' -f1);climit=$(bc -l <<< "scale=0; $limit*95/100");wlimit=$(bc -l <<< "scale=0; $limit*90/100");clow=$(bc -l <<< "scale=0; $limit/100");wlow=$(bc -l <<< "scale=0; $limit*5/100");echo "P Fastd_Clients_$interface Clients=$clients;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit";done
 ##System
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
