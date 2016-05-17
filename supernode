@@ -3,11 +3,6 @@
 
 #Get data
 bat_version=$(batctl -v);
-bat_gateways=$(($(batctl gwl|wc -l)-1));
-bat_router=$(($(batctl o|wc -l)-3));
-bat_clients=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/bat0/transtable_global);
-bat_ips=$(($(batctl dc|wc -l)-2));
-bat_ips_wrong=$(($(sudo batctl dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cut -d ':' -f 2|cut -d '.' -f 1))-2));
 fastd_version=$(fastd -v|cut -d ' ' -f 2);
 kernel=$(uname -r);
 release=$(lsb_release -ds);
@@ -15,10 +10,21 @@ release=$(lsb_release -ds);
 #Output
 ##Batman
 echo "0 Batman-Version Version=$bat_version; $bat_version"
-echo "P Batman-Gateways Gateways=$bat_gateways;3;5;"
-echo "P Batman-Router Router=$bat_router;10:450;5:500;"
-echo "P Batman-Clients Clients=$bat_clients;5:2000;0:25000; $bat_clients Clients";
-echo "P Batman-IPs IP-Adressen=$bat_ips|Falsche-Adressen=$bat_ips_wrong;5;50;";
+list=$(ls -F /sys/kernel/debug/batman_adv|grep /);
+for i in $list;
+do z=$(ls /sys/kernel/debug/batman_adv/$i|wc -l);
+if [ $z -ge 9 ]; then b=$(echo $i|cut -d '/' -f1);
+router=$(($(batctl -m $b o|wc -l)-2));
+clients=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/$b/transtable_global);
+gateways=$(($(batctl -m $b gwl|wc -l)-1));
+ips=$(($(batctl -m $b dc|wc -l)-2));
+wlow=$(bc -l <<< "scale=0; $router*20/100");
+clow=$(bc -l <<< "scale=0; $router*5/100");
+wlimit=$(bc -l <<< "scale=0; $router*5");
+climit=$(bc -l <<< "scale=0; $router*10");
+echo "P Batman-$b Router=$router;5:250;1:500|Clients=$clients;$wlow:$wlimit;$clow:$climit|Gateways=$gateways;0:3;0:5;|IPs=$ips";
+fi;
+done
 ##Fastd
 echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
 list=$(ls -F /etc/fastd|grep /|cut -d '/' -f 1);for i in $list; do clients=$(nc -U $(cat /etc/fastd/$i/fastd.conf|grep 'status socket'|cut -d '"' -f 2)|grep '"established"' -o|wc -l); interface=$(cat /etc/fastd/$i/fastd.conf|grep interface|cut -d '"' -f 2); mtu=$(cat /etc/fastd/$i/fastd.conf|grep mtu|cut -d ' ' -f 2|cut -d ';' -f1);port=$(cat /etc/fastd/$i/fastd.conf|grep bind|cut -d ':' -f 2|cut -d ' ' -f1);limit=$(cat /etc/fastd/$i/fastd.conf|grep 'peer limit'|cut -d ' ' -f 3|cut -d ';' -f1);climit=$(bc -l <<< "scale=0; $limit*95/100");wlimit=$(bc -l <<< "scale=0; $limit*90/100");clow=$(bc -l <<< "scale=0; $limit/100");wlow=$(bc -l <<< "scale=0; $limit*5/100");echo "P Fastd_Clients_$interface Clients=$clients;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit";done
