@@ -11,7 +11,7 @@ bat_ips_wrong=$(($(sudo batctl dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cu
 fastd_version=$(fastd -v|cut -d ' ' -f 2);
 fastd_inst=$(netstat -tulpn|grep -c fastd);
 fastd_peer_limit=$(grep 'peer limit' /etc/fastd/client/fastd.conf | cut -d ' ' -f 3 | cut -d ';' -f 1);
-fastd_clients=$(nc -U /tmp/fastd.sock|grep '"established"' -o|wc -l);
+fastd_clients=$(nc -U $(cat /etc/fastd/client/fastd.conf|grep status\ socket|rev|cut -d" " -f1|cut -b3-999|rev|cut -b2-999)|grep '"established"' -o|wc -l)
 kernel=$(uname -r);
 release=$(lsb_release -ds);
 
