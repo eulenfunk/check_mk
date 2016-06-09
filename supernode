@@ -33,4 +33,4 @@ list=$(ls -F /etc/fastd|grep /|cut -d '/' -f 1);for i in $list; do clients=$(nc 
 ##System
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
 ##ISC-DHCP-leases active
-echo "0 Dhcp-Leases Leases=$leases;5:1000;1:2000";
+echo "P Dhcp-Leases Leases=$leases;5:1000;1:2000";
