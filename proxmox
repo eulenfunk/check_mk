@@ -6,7 +6,33 @@ px_version=$(pveversion);
 px_vms_sum=$(($(qm list|wc -l)-1));
 px_vms_stopped=$(qm list|grep -c stopped);
 px_vms_started=$(qm list|grep -c running);
-cpu_temp=$(sensors|grep Core|cut -d ' ' -f 1,2,9,13,16|tr ':' '='|sed s/' '/''/g|sed s/'+'/''/|sed s/'°C,+'/';'/g|sed s/'°C+'/';'/|sed s/'°C)'/''/|tr '\n' '#'|sed s/'#C'/'|C'/g|sed s/'#'/''/g);
+
+#Temperature sensors
+TFILE="/tmp/$(basename $0).$$.tmp"
+/usr/bin/sensors > $TFILE
+temper="P LMsensors "
+while read line; do
+  if  [[ $line == *-*-* ]] ; then
+    prefix=$(echo $line)
+   fi
+  if  ( [[ $line == *:*C\ * ]] || [[ $line == *:*W\ * ]] ) ; then
+    key=$(echo $line|cut -d":" -f1|sed s/\ //|sed s/\ //)
+    values=$(echo $line|cut -d":" -f2)
+    value=$(echo $values|cut -d" " -f1|tr -d "°C():;+,=-")
+    high=$(echo $values|cut -d"h" -f2-10|cut -d" " -f3|tr -d "°C():;+,=-")
+    crit=$(echo $values|cut -d"r" -f2-10|cut -d" " -f3|tr -d "°C():;+,=-")
+    # fallback values
+    if [[ $high != *"."* ]] ; then
+      high=100
+     fi
+    if [[ $crit != *"."* ]] ; then
+      crit=120
+     fi
+    temper="$temper$prefix-$key=$value;0.1:$high;0.1:$crit|"
+   fi
+ done <$TFILE
+
 #Output
 echo "0 Proxmox_Version Version=$px_version;"
 echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
+echo $(echo $temper|sed 's/|$//')
