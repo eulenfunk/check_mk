@@ -31,6 +31,8 @@ while read line; do
     temper="$temper$prefix-$key=$value;0.1:$high;0.1:$crit|"
    fi
  done <$TFILE
+rm $TFILE
+
 
 #Output
 echo "0 Proxmox_Version Version=$px_version;"
