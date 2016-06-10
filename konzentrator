@@ -10,6 +10,6 @@ conntrack_warning=$(($conntrack_limit - 2000));
 
 #Output
 ##BGP
-echo "P BGP-Sessions IPv4=$bgp4_sessions_up;4:4;3:5|IPv6=$bgp6_sessions_up;4:4;3:5"
+echo "P BGP-Sessions IPv4=$bgp4_sessions_up;4:6;3:5|IPv6=$bgp6_sessions_up;4:6;3:6"
 ##Conntrack
 echo "P Conntrack conntrack=$conntrack;$conntrack_warning;$conntrack_limit $conntrack"
