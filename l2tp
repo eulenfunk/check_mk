@@ -1,12 +1,57 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
 
+export LANG=de_DE.UTF-8
+
+function confline # get first line from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
+{
+ echo $(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i "$2"|head -n 1)
+}
+
+function conflines # get lines from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
+{
+ echo "$(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i $2)"
+}
+
+## static data
+kernel=$(uname -r);
+release=$(lsb_release -ds);
+
+## ubuntu-Status
+echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
+## ubuntu patch status
+nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "packages can be updated"|cut -d" " -f1)
+supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "updates are security updates"|cut -d" " -f1)
+reboot=0
+if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
+  reboot=$(/usr/lib/update-notifier/update-motd-reboot-required|grep \*\*\**\*\*\*|wc -l)
+ fi
+echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.9;0:2|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:0.9;0:1"
+
+## logins
+logincount=$(who|wc -l)
+logout="0 LocalUser CurrentLogins=$logincount.0; CurrentLogins:$logincount"
+i=0
+TFILE="/tmp/$(basename $0).$$.tmp"
+who -u>$TFILE
+while read line; do
+  i=$(( i + 1))
+  line=$(echo $line|sed s/\ +//|tr -s " ")
+  user=$(echo $line|cut -d" " -f1)
+  tty=$(echo $line|cut -d" " -f2)
+  idle=$(echo $line|cut -d" " -f6)
+  ip=$(echo $line|cut -d" " -f8)
+  logout="$logout\n login-$i-user:$user login-$i-tty:$tty login-$i-idle:$idle login-$i-source:$ip"
+ done<$TFILE
+rm $TFILE
+echo "$logout"
+
 #Get data
 l_tunnel=$(ip a |grep l2tp|grep tunneldigger -c);
 tunneldigger=$(ifconfig|grep tunneldigger -c);
 
 #Output
-echo "0 Tunneldigger Tunneldiggerbridge=$tunneldigger;1; Tunneldiggerbrücken $tunneldigger"
+echo "0 Tunneldigger Tunneldiggerbridge=$tunneldigger;0.1:1:0.1:2; Tunneldiggerbrücken $tunneldigger"
 echo "P L2TP Clients=$l_tunnel;1:30;0:80;"
 
 
