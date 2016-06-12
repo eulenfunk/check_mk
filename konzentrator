@@ -26,7 +26,7 @@ reboot=0
 if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
   reboot=$(/usr/lib/update-notifier/update-motd-reboot-required|grep \*\*\**\*\*\*|wc -l)
  fi
-echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:0.5;0:1"
+echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.9;0:2|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:0.9;0:1"
 
 ## logins
 logincount=$(who|wc -l)
@@ -63,8 +63,8 @@ while read -r line; do
   mtu=$(ip link|grep $remote|cut -d" " -f5)
   echo "P tunl_$remote link-$remote=$state.0;0:2;0:2; link-$remote:$tunnelst mtu:$mtu"
  done <<< "$tunnel"
-wlow=$(( $tunnelzahl - 1 ))
-clow=$(( $tunnelzahl * 10 / 20 ))
+wlow=$(( $tunnelzahl ))
+clow=$(( $tunnelzahl * 10 / 20 + 1 ))
 wlimit=$(( $tunnelzahl ))
 climit=$(( $tunnelzahl ))
 echo "P Tunlinks Tunnel-Up=$tunnelup.0;$wlow:$wlimit;$clow:$climit|Tunnel-Configured=$tunnelzahl.0 Tunnel-Configured:$tunnelzahl Tunnel-Up:$tunnelup"
@@ -77,7 +77,7 @@ bird4loaded=0
 bird4up=0
 bird4imported=0
 bird4exported=0
-wlow=$(( $bird4confzahl - 1 ))
+wlow=$(( $bird4confzahl ))
 clow=$(( $bird4confzahl * 10 / 20 + 1 ))
 wlimit=$(( $bird4confzahl ))
 climit=$(( $bird4confzahl ))
@@ -117,11 +117,11 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0:2;0:2 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0.1:1;0:1 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
    fi
  done<$TFILE
 rm $TFILE
-echo "P Bird4links bird4-Up=$bird4up.0;$wlow:$wlimit;$clow:$climit|Bird4-Configured=$bird4confzahl.0|Bird4-Loaded=$bird4loaded.0;$(($bird4confzahl-1)):$(($bird4confzahl+1));$(($bird4confzahl-1)):$(($bird4confzahl+1))|Bird4Imported=$bird4imported.0|Bird4Exported=$bird4exported.0 Up:$bird4up Configured:$bird4confzahl Loaded:$bird4loaded Imported:$bird4imported Exported:$bird4exported"
+echo "P Bird4links bird4-Up=$bird4up.0;$wlow:$wlimit;$clow:$climit|Bird4-Configured=$bird4confzahl.0|Bird4-Loaded=$bird4loaded.0;$bird4confzahl:$bird4confzahl;$bird4confzahl:$bird4confzahl|Bird4Imported=$bird4imported.0|Bird4Exported=$bird4exported.0 Up:$bird4up Configured:$bird4confzahl Loaded:$bird4loaded Imported:$bird4imported Exported:$bird4exported"
 
 ## Bird6
 bird6conf=/etc/bird/bird6.conf
@@ -131,8 +131,8 @@ bird6loaded=0
 bird6up=0
 bird6imported=0
 bird6exported=0
-wlow=$(( $bird6confzahl - 1 ))
-clow=$(( $bird6confzahl * 10 / 20 +1 ))
+wlow=$(( $bird6confzahl ))
+clow=$(( $bird6confzahl * 10 / 20 + 1 ))
 wlimit=$(( $bird6confzahl ))
 climit=$(( $bird6confzahl ))
 TFILE="/tmp/$(basename $0).$$.tmp"
@@ -171,20 +171,19 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0:2;0:2 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0.1:1;0:1 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
    fi
  done<$TFILE
 rm $TFILE
-echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configured=$bird6confzahl.0|Bird6-Loaded=$bird6loaded.0;$(($bird6confzahl-1)):$(($bird6confzahl+1));$(($bird6confzahl-1)):$(($bird6confzahl+1))|Bird6Imported=$bird6imported.0|Bird6Exported=$bird6exported.0 Up:$bird6up Configured:$bird6confzahl Loaded:$bird6loaded Imported:$bird6imported Exported:$bird6exported"
+echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configured=$bird6confzahl.0|Bird6-Loaded=$bird6loaded.0;$bird6confzahl:$bird6confzahl;$bird6confzahl:$bird6confzahl|Bird6Imported=$bird6imported.0|Bird6Exported=$bird6exported.0 Up:$bird6up Configured:$bird6confzahl Loaded:$bird6loaded Imported:$bird6imported Exported:$bird6exported"
 
 
 ## Conntrack
 conntrack=$(conntrack -C);
 conntrack_limit=$(sysctl -a 2>/dev/null |grep net.nf_conntrack_max|cut -d ' ' -f 3);
 conntrack_remain=$(( $conntrack_limit - $conntrack ))
-wlow=0
-clow=1
+wlow=0.1
+clow=1.1
 wlimit=$(( $conntrack_limit * 10 / 7 ))
 climit=$(( $conntrack_limit * 10 / 9 ))
 echo "P Conntrack conntrack=$conntrack.0;$wlow:$wlimit;$clow:$climit|conntrack_remain=$conntrack_remain.0 Conntrack:$conntrack Conntrack-Remain:$conntrack_remain Conntrack-Limit:$conntrack_limit"
-
