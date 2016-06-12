@@ -1,5 +1,6 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
+export LANG=de_DE.UTF-8
 
 function confline # get first line from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
 {
@@ -25,7 +26,6 @@ release=$(lsb_release -ds);
 #isc-dhcpd-server leases
 dhcpconf=/etc/dhcp/dhcpd.conf
 dhcprange=$(confline $dhcpconf range)
-#dhcprange=$(cat $dhcpconf|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i range)
 dhcpstart=$(echo $dhcprange|cut -d" " -f2)
 dhcpend=$(echo $dhcprange|cut -d" " -f3)
 totalleases=$(($(ati $dhcpend) - $(ati $dhcpstart)))
@@ -35,8 +35,16 @@ actwarn=$(($totalleases * 75 / 100))
 actcrit=$(($totalleases * 90 / 100))
 
 #Output
-##System
+##Ubuntu-Status
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
+## ubuntu patch status
+nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "packages can be updated"|cut -d" " -f1)
+supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "updates are security updates"|cut -d" " -f1)
+reboot=0
+if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
+  reboot=$(/usr/lib/update-notifier/update-motd-reboot-required|grep \*\*\**\*\*\*|wc -l)
+ fi
+echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:1;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:1;0:1"
 
 ##Leases
 echo "P Dhcp-Leases active-leases=$activeleases.0;5:$actwarn;1:$actcrit|remaining-leases=$remainingleases.0;50:65536;25:65536|total-leases=$totalleases.0";
@@ -76,3 +84,21 @@ for fasti in $list ; do
   wlow=$(( $limit * 5 / 100 ))
   echo "P Fastd_Clients_$interface Clients=$clients.0;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit"
  done
+
+##Logins
+logincount=$(who|wc -l)
+logout="0 LocalUser CurrentLogins=$logincount.0 "
+i=0
+TFILE="/tmp/$(basename $0).$$.tmp"
+who -u>$TFILE
+while read line; do
+  i=$(( i + 1))
+  line=$(echo $line|sed s/\ +//|tr -s " ")
+  user=$(echo $line|cut -d" " -f1)
+  tty=$(echo $line|cut -d" " -f2)
+  idle=$(echo $line|cut -d" " -f5)
+  ip=$(echo $line|cut -d" " -f8)
+  logout="$logout\n login-$i-user:$user login-$i-tty:$tty login-$i-idle:$idle login-$i-source:$ip"
+ done<$TFILE
+rm $TFILE
+echo "$logout"
