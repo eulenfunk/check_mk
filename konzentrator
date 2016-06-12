@@ -113,7 +113,7 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0:2;0:2; preferred:$preferred|imported=$imported|exported=$exported|ImpUpAcp=$ImpUpAcp|ImpUpWit=$ImpUpWit|ExpUpAcp=$ExpUpAcp|ExUpWit=$ExpUpWit Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0:2;0:2|preferred=$preferred|imported=$imported|exported=$exported|ImpUpAcp=$ImpUpAcp|ImpUpWit=$ImpUpWit|ExpUpAcp=$ExpUpAcp|ExUpWit=$ExpUpWit Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
    fi
  done<$TFILE
 rm $TFILE
@@ -163,7 +163,7 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0:2;0:2; preferred:$preferred|imported=$imported|exported=$exported|ImpUpAcp=$ImpUpAcp|ImpUpWit=$ImpUpWit|ExpUpAcp=$ExpUpAcp|ExUpWit=$ExpUpWit Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0:2;0:2|preferred=$preferred|imported=$imported|exported=$exported|ImpUpAcp=$ImpUpAcp|ImpUpWit=$ImpUpWit|ExpUpAcp=$ExpUpAcp|ExUpWit=$ExpUpWit Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
    fi
  done<$TFILE
 rm $TFILE
