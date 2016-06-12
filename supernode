@@ -96,7 +96,7 @@ while read line; do
   line=$(echo $line|sed s/\ +//|tr -s " ")
   user=$(echo $line|cut -d" " -f1)
   tty=$(echo $line|cut -d" " -f2)
-  idle=$(echo $line|cut -d" " -f5)
+  idle=$(echo $line|cut -d" " -f6)
   ip=$(echo $line|cut -d" " -f8)
   logout="$logout\n login-$i-user:$user login-$i-tty:$tty login-$i-idle:$idle login-$i-source:$ip"
  done<$TFILE
