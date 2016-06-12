@@ -9,7 +9,7 @@ function confline # get first line from file $1 mathing $2, stripped of # and ; 
 }
 
 function conflines # get lines from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
-{
+{import 
  echo "$(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i $2)"
 }
 
@@ -106,7 +106,7 @@ while read line; do
      preferred=$(echo $routes|cut -d" " -f6-7|grep -i "preferred"|cut -d" " -f1)
      ImportUp=$(confline $TFILE2 "Import")
      ImpUpAcp=$(echo $routes|cut -d" " -f6)
-     ImportUp=$(confline $TFILE2 "'Import withdraws:")
+     ImportUp=$(confline $TFILE2 "Import withdraws:")
      ImpUpWit=$(echo $routes|cut -d" " -f6)
      ExportUp=$(confline $TFILE2 "Export updates:")
      ExpUpAcp=$(echo $routes|cut -d" " -f6)
@@ -156,7 +156,7 @@ while read line; do
      preferred=$(echo $routes|cut -d" " -f6-7|grep -i "preferred"|cut -d" " -f1)
      ImportUp=$(confline $TFILE2 "Import")
      ImpUpAcp=$(echo $routes|cut -d" " -f6)
-     ImportUp=$(confline $TFILE2 "'Import withdraws:")
+     ImportUp=$(confline $TFILE2 "Import withdraws:")
      ImpUpWit=$(echo $routes|cut -d" " -f6)
      ExportUp=$(confline $TFILE2 "Export updates:")
      ExpUpAcp=$(echo $routes|cut -d" " -f6)
@@ -175,7 +175,7 @@ conntrack_limit=$(sysctl -a 2>/dev/null |grep net.nf_conntrack_max|cut -d ' ' -f
 conntrack_remain=$(( $conntrack_limit - $conntrack ))
 wlow=0
 clow=1
-wlimit=$(( $conntrack_limit *10 / 7 ))
-climit=$(( $conntrack_limit *10 / 9 ))
+wlimit=$(( $conntrack_limit * 10 / 7 ))
+climit=$(( $conntrack_limit * 10 / 9 ))
 echo "P Conntrack conntrack=$conntrack.0;$wlow:$wlimit;$clow:$climit|conntrack_remain=$conntrack_remain.0 Conntrack:$conntrack Conntrack-Remain:$conntrack_remain Conntrack-Limit:$conntrack_limit"
 
