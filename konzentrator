@@ -1,15 +1,181 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
 
-#Get data
-bgp4_sessions_up=$(birdc s p|grep BGP|grep -c up)
-bgp6_sessions_up=$(birdc6 s p|grep BGP|grep -c up)
-conntrack=$(conntrack -C);
-conntrack_limit=$(sysctl -a |grep net.nf_conntrack_max|cut -d ' ' -f 3);
-conntrack_warning=$(($conntrack_limit - 2000));
+export LANG=de_DE.UTF-8
 
-#Output
-##BGP
-echo "P BGP-Sessions IPv4=$bgp4_sessions_up;4:6;3:6|IPv6=$bgp6_sessions_up;4:6;3:6"
-##Conntrack
-echo "P Conntrack conntrack=$conntrack;$conntrack_warning;$conntrack_limit $conntrack"
+function confline # get first line from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
+{
+ echo $(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i "$2"|head -n 1)
+}
+
+function conflines # get lines from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
+{
+ echo "$(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i $2)"
+}
+
+## static data
+kernel=$(uname -r);
+release=$(lsb_release -ds);
+
+## ubuntu-Status
+echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
+## ubuntu patch status
+nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "packages can be updated"|cut -d" " -f1)
+supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "updates are security updates"|cut -d" " -f1)
+reboot=0
+if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
+  reboot=$(/usr/lib/update-notifier/update-motd-reboot-required|grep \*\*\**\*\*\*|wc -l)
+ fi
+echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:1;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:1;0:1"
+
+## logins
+logincount=$(who|wc -l)
+logout="0 LocalUser CurrentLogins=$logincount.0; CurrentLogins:$logincount"
+i=0
+TFILE="/tmp/$(basename $0).$$.tmp"
+who -u>$TFILE
+while read line; do
+  i=$(( i + 1))
+  line=$(echo $line|sed s/\ +//|tr -s " ")
+  user=$(echo $line|cut -d" " -f1)
+  tty=$(echo $line|cut -d" " -f2)
+  idle=$(echo $line|cut -d" " -f6)
+  ip=$(echo $line|cut -d" " -f8)
+  logout="$logout\n login-$i-user:$user login-$i-tty:$tty login-$i-idle:$idle login-$i-source:$ip"
+ done<$TFILE
+rm $TFILE
+echo "$logout"
+
+# BGP-interfaces
+interconf=/etc/network/interfaces
+tunnel=$(conflines $interconf iface|grep " tunnel")
+tunnelzahl=$(echo "$tunnel"|wc -l)
+tunnelup=0
+while read -r line; do
+  remote=$(echo $line|cut -d" " -f2)
+  state=$(ip link|grep $remote|wc -l)
+  if [ $state -eq 1 ]; then
+    tunnelup=$(( $tunnelup + 1 ))
+    tunnelst="UP"
+   else
+    tunnelst="DOWN"
+   fi
+  mtu=$(ip link|grep $remote|cut -d" " -f5)
+  echo "P tunl_$remote link-$remote=$state.0;0:2;0:2; link-$remote:$tunnelst mtu:$mtu"
+ done <<< "$tunnel"
+wlow=$(( $tunnelzahl - 1 ))
+clow=$(( $tunnelzahl * 10 / 20 ))
+wlimit=$(( $tunnelzahl + 1 ))
+climit=$(( $tunnelzahl + 1 ))
+echo "P Tunlinks Tunnel-Up=$tunnelup.0;$wlow:$wlimit;$clow:$climit|Tunnel-Configured=$tunnelzahl.0 Tunnel-Configured:$tunnelzahl Tunnel-Up:$tunnelup"
+
+## Bird4
+bird4conf=/etc/bird/bird.conf
+bird4=$(conflines $bird4conf protocol|grep -i " bgp")
+bird4confzahl=$(echo "$bird4"|wc -l)
+bird4loaded=0
+bird4up=0
+wlow=$(( $bird4confzahl - 1 ))
+clow=$(( $bird4confzahl * 10 / 20 ))
+wlimit=$(( $bird4confzahl + 1 ))
+climit=$(( $bird4confzahl + 1 ))
+TFILE="/tmp/$(basename $0).$$.tmp"
+birdc s p>$TFILE
+while read line; do
+  line=$(echo $line|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//)
+  if [ $(echo $line|cut -d" " -f2) = "BGP" ] ; then
+    bird4loaded=$(( $bird4loaded + 1))
+    remote=$(echo $line|cut -d" " -f1)
+    link=$(echo $line|cut -d" " -f4)
+    since=$(echo $line|cut -d" " -f5)
+    linkstate=$(echo $line|cut -d" " -f6)
+    linkok=0
+    if [ $linkstate = "Established" ] ; then
+      linkok=1;
+      birdlink="UP"
+      bird4up=$(( $bird4up + 1 ))
+     else
+      birdlink="DOWN"
+     fi
+     TFILE2="/tmp/$(basename $0).$$$.tmp"
+     birdc s p all $remote>$TFILE2
+     preference=$(confline $TFILE2 Preference:|cut -d" " -f2)
+     routes=$(confline $TFILE2 Routes:)
+     imported=$(echo $routes|cut -d" " -f2-3|grep -i "imported"|cut -d" " -f1)
+     exported=$(echo $routes|cut -d" " -f4-5|grep -i "exported"|cut -d" " -f1)
+     preferred=$(echo $routes|cut -d" " -f6-7|grep -i "preferred"|cut -d" " -f1)
+     ImportUp=$(confline $TFILE2 "Import")
+     ImpUpAcp=$(echo $routes|cut -d" " -f6)
+     ImportUp=$(confline $TFILE2 "'Import withdraws:")
+     ImpUpWit=$(echo $routes|cut -d" " -f6)
+     ExportUp=$(confline $TFILE2 "Export updates:")
+     ExpUpAcp=$(echo $routes|cut -d" " -f6)
+     ExportUp=$(confline $TFILE2 "Export withdraws:")
+     ExpUpWit=$(echo $routes|cut -d" " -f6)
+     rm $TFILE2
+    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0:2;0:2; preferred:$preferred|imported=$imported|exported=$exported|ImpUpAcp=$ImpUpAcp|ImpUpWit=$ImpUpWit|ExpUpAcp=$ExpUpAcp|ExUpWit=$ExpUpWit Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+   fi
+ done<$TFILE
+rm $TFILE
+echo "P Bird4links bird4-Up=$bird4up.0;$wlow:$wlimit;$clow:$climit|Bird4-Configured=$bird4confzahl.0|Bird4-Loaded=$bird4loaded.0;$(($bird4confzahl-1)):$(($bird4confzahl+1));$(($bird4confzahl-1)):$(($bird4confzahl+1)) Bird4-Up:$bird4up Bird4-Loaded:$bird4loaded Bird4-Configured:$bird4confzahl"
+
+## Bird6
+bird6conf=/etc/bird/bird6.conf
+bird6=$(conflines $bird6conf protocol|grep -i " bgp")
+bird6confzahl=$(echo "$bird6"|wc -l)
+bird6loaded=0
+bird6up=0
+wlow=$(( $bird6confzahl - 1 ))
+clow=$(( $bird6confzahl * 10 / 20 ))
+wlimit=$(( $bird6confzahl + 1 ))
+climit=$(( $bird6confzahl + 1 ))
+TFILE="/tmp/$(basename $0).$$.tmp"
+birdc6 s p>$TFILE
+while read line; do
+  line=$(echo $line|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//)
+  if [ $(echo $line|cut -d" " -f2) = "BGP" ] ; then
+    bird6loaded=$(( $bird6loaded + 1))
+    remote=$(echo $line|cut -d" " -f1)
+    link=$(echo $line|cut -d" " -f4)
+    since=$(echo $line|cut -d" " -f5)
+    linkstate=$(echo $line|cut -d" " -f6)
+    linkok=0
+    if [ $linkstate = "Established" ] ; then
+      linkok=1;
+      birdlink="UP"
+      bird6up=$(( $bird6up + 1 ))
+     else
+      birdlink="DOWN"
+     fi
+     TFILE2="/tmp/$(basename $0).$$$.tmp"
+     birdc6 s p all $remote>$TFILE2
+     preference=$(confline $TFILE2 Preference:|cut -d" " -f2)
+     routes=$(confline $TFILE2 Routes:)
+     imported=$(echo $routes|cut -d" " -f2-3|grep -i "imported"|cut -d" " -f1)
+     exported=$(echo $routes|cut -d" " -f4-5|grep -i "exported"|cut -d" " -f1)
+     preferred=$(echo $routes|cut -d" " -f6-7|grep -i "preferred"|cut -d" " -f1)
+     ImportUp=$(confline $TFILE2 "Import")
+     ImpUpAcp=$(echo $routes|cut -d" " -f6)
+     ImportUp=$(confline $TFILE2 "'Import withdraws:")
+     ImpUpWit=$(echo $routes|cut -d" " -f6)
+     ExportUp=$(confline $TFILE2 "Export updates:")
+     ExpUpAcp=$(echo $routes|cut -d" " -f6)
+     ExportUp=$(confline $TFILE2 "Export withdraws:")
+     ExpUpWit=$(echo $routes|cut -d" " -f6)
+     rm $TFILE2
+    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0:2;0:2; preferred:$preferred|imported=$imported|exported=$exported|ImpUpAcp=$ImpUpAcp|ImpUpWit=$ImpUpWit|ExpUpAcp=$ExpUpAcp|ExUpWit=$ExpUpWit Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+   fi
+ done<$TFILE
+rm $TFILE
+echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configured=$bird6confzahl.0|Bird6-Loaded=$bird6loaded.0;$(($bird6confzahl-1)):$(($bird6confzahl+1));$(($bird6confzahl-1)):$(($bird6confzahl+1)) Bird6-Up:$bird6up Bird6-Loaded:$bird6loaded Bird6-Configured:$bird6confzahl"
+
+## Conntrack
+conntrack=$(conntrack -C);
+conntrack_limit=$(sysctl -a 2>/dev/null |grep net.nf_conntrack_max|cut -d ' ' -f 3);
+conntrack_remain=$(( $conntrack_limit - $conntrack ))
+wlow=0
+clow=1
+wlimit=$(( $conntrack_limit *10 / 7 ))
+climit=$(( $conntrack_limit *10 / 9 ))
+echo "P Conntrack conntrack=$conntrack.0;$wlow:$wlimit;$clow:$climit|conntrack_remain=$conntrack_remain.0 Conntrack:$conntrack Conntrack-Remain:$conntrack_remain Conntrack-Limit:$conntrack_limit"
+
