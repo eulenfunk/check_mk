@@ -26,7 +26,7 @@ reboot=0
 if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
   reboot=$(/usr/lib/update-notifier/update-motd-reboot-required|grep \*\*\**\*\*\*|wc -l)
  fi
-echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:1;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:1;0:1"
+echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:0.5;0:1"
 
 ## logins
 logincount=$(who|wc -l)
@@ -65,8 +65,8 @@ while read -r line; do
  done <<< "$tunnel"
 wlow=$(( $tunnelzahl - 1 ))
 clow=$(( $tunnelzahl * 10 / 20 ))
-wlimit=$(( $tunnelzahl + 1 ))
-climit=$(( $tunnelzahl + 1 ))
+wlimit=$(( $tunnelzahl ))
+climit=$(( $tunnelzahl ))
 echo "P Tunlinks Tunnel-Up=$tunnelup.0;$wlow:$wlimit;$clow:$climit|Tunnel-Configured=$tunnelzahl.0 Tunnel-Configured:$tunnelzahl Tunnel-Up:$tunnelup"
 
 ## Bird4
@@ -75,10 +75,12 @@ bird4=$(conflines $bird4conf protocol|grep -i " bgp")
 bird4confzahl=$(echo "$bird4"|wc -l)
 bird4loaded=0
 bird4up=0
+bird4imported=0
+bird4exported=0
 wlow=$(( $bird4confzahl - 1 ))
-clow=$(( $bird4confzahl * 10 / 20 ))
-wlimit=$(( $bird4confzahl + 1 ))
-climit=$(( $bird4confzahl + 1 ))
+clow=$(( $bird4confzahl * 10 / 20 + 1 ))
+wlimit=$(( $bird4confzahl ))
+climit=$(( $bird4confzahl ))
 TFILE="/tmp/$(basename $0).$$.tmp"
 birdc s p>$TFILE
 while read line; do
@@ -102,7 +104,9 @@ while read line; do
      preference=$(confline $TFILE2 Preference:|cut -d" " -f2)
      routes=$(confline $TFILE2 Routes:)
      imported=$(echo $routes|cut -d" " -f2-3|grep -i "imported"|cut -d" " -f1)
+     bird4imported=$(( $bird4imported + $imported ))
      exported=$(echo $routes|cut -d" " -f4-5|grep -i "exported"|cut -d" " -f1)
+     bird4exported=$(( $bird4exported + $exported ))
      preferred=$(echo $routes|cut -d" " -f6-7|grep -i "preferred"|cut -d" " -f1)
      ImportUp=$(confline $TFILE2 "Import")
      ImpUpAcp=$(echo $routes|cut -d" " -f6)
@@ -113,11 +117,11 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0:2;0:2|preferred=$preferred.0|imported=$imported.0|exported=$exported.0|ImpUpAcp=$ImpUpAcp.0|ImpUpWit=$ImpUpWit.0|ExpUpAcp=$ExpUpAcp.0|ExUpWit=$ExpUpWit.0 Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0:2;0:2 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
    fi
  done<$TFILE
 rm $TFILE
-echo "P Bird4links bird4-Up=$bird4up.0;$wlow:$wlimit;$clow:$climit|Bird4-Configured=$bird4confzahl.0|Bird4-Loaded=$bird4loaded.0;$(($bird4confzahl-1)):$(($bird4confzahl+1));$(($bird4confzahl-1)):$(($bird4confzahl+1)) Bird4-Up:$bird4up Bird4-Loaded:$bird4loaded Bird4-Configured:$bird4confzahl"
+echo "P Bird4links bird4-Up=$bird4up.0;$wlow:$wlimit;$clow:$climit|Bird4-Configured=$bird4confzahl.0|Bird4-Loaded=$bird4loaded.0;$(($bird4confzahl-1)):$(($bird4confzahl+1));$(($bird4confzahl-1)):$(($bird4confzahl+1))|Bird4Imported=$bird4imported.0|Bird4Exported=$bird4exported.0 Up:$bird4up Configured:$bird4confzahl Loaded:$bird4loaded Imported:$bird4imported Exported:$bird4exported"
 
 ## Bird6
 bird6conf=/etc/bird/bird6.conf
@@ -125,10 +129,12 @@ bird6=$(conflines $bird6conf protocol|grep -i " bgp")
 bird6confzahl=$(echo "$bird6"|wc -l)
 bird6loaded=0
 bird6up=0
+bird6imported=0
+bird6exported=0
 wlow=$(( $bird6confzahl - 1 ))
-clow=$(( $bird6confzahl * 10 / 20 ))
-wlimit=$(( $bird6confzahl + 1 ))
-climit=$(( $bird6confzahl + 1 ))
+clow=$(( $bird6confzahl * 10 / 20 +1 ))
+wlimit=$(( $bird6confzahl ))
+climit=$(( $bird6confzahl ))
 TFILE="/tmp/$(basename $0).$$.tmp"
 birdc6 s p>$TFILE
 while read line; do
@@ -152,7 +158,9 @@ while read line; do
      preference=$(confline $TFILE2 Preference:|cut -d" " -f2)
      routes=$(confline $TFILE2 Routes:)
      imported=$(echo $routes|cut -d" " -f2-3|grep -i "imported"|cut -d" " -f1)
+     bird6imported=$(( $bird6imported + $imported ))
      exported=$(echo $routes|cut -d" " -f4-5|grep -i "exported"|cut -d" " -f1)
+     bird6exported=$(( $bird6exported + $exported ))
      preferred=$(echo $routes|cut -d" " -f6-7|grep -i "preferred"|cut -d" " -f1)
      ImportUp=$(confline $TFILE2 "Import")
      ImpUpAcp=$(echo $routes|cut -d" " -f6)
@@ -163,11 +171,12 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0:2;0:2|preferred=$preferred.0|imported=$imported.0|exported=$exported.0|ImpUpAcp=$ImpUpAcp.0|ImpUpWit=$ImpUpWit.0|ExpUpAcp=$ExpUpAcp.0|ExUpWit=$ExpUpWit.0 Remote:$remote linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0:2;0:2 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
    fi
  done<$TFILE
 rm $TFILE
-echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configured=$bird6confzahl.0|Bird6-Loaded=$bird6loaded.0;$(($bird6confzahl-1)):$(($bird6confzahl+1));$(($bird6confzahl-1)):$(($bird6confzahl+1)) Bird6-Up:$bird6up Bird6-Loaded:$bird6loaded Bird6-Configured:$bird6confzahl"
+echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configured=$bird6confzahl.0|Bird6-Loaded=$bird6loaded.0;$(($bird6confzahl-1)):$(($bird6confzahl+1));$(($bird6confzahl-1)):$(($bird6confzahl+1))|Bird6Imported=$bird6imported.0|Bird6Exported=$bird6exported.0 Up:$bird6up Configured:$bird6confzahl Loaded:$bird6loaded Imported:$bird6imported Exported:$bird6exported"
+
 
 ## Conntrack
 conntrack=$(conntrack -C);
