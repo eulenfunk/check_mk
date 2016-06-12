@@ -1,35 +1,79 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
 
-#Get data
+function confline # get first line from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
+{
+ echo $(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i $2|head -n 1)
+}
+
+function ati # ipv4 to longint
+{
+ ip4=$1; ipno=0
+ for (( i=0 ; i<4 ; ++i )); do
+   ((ipno+=${ip4%%.*}*$((254**$((3-${i})))))) # .0 .255 should not be counted
+   ip4=${ip4#*.}
+  done
+ echo $ipno
+}
+
+#static data
 bat_version=$(batctl -v);
 fastd_version=$(fastd -v|cut -d ' ' -f 2);
 kernel=$(uname -r);
 release=$(lsb_release -ds);
 
+#isc-dhcpd-server leases
+dhcpconf=/etc/dhcp/dhcpd.conf
+dhcprange=$(confline $dhcpconf range)
+#dhcprange=$(cat $dhcpconf|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i range)
+dhcpstart=$(echo $dhcprange|cut -d" " -f2)
+dhcpend=$(echo $dhcprange|cut -d" " -f3)
+totalleases=$(($(ati $dhcpend) - $(ati $dhcpstart)))
+activeleases=$(/opt/eulenfunk/dhcpleases|grep "^| Total"|cut -d":" -f2|sed s/\ //)
+remainingleases=$(($totalleases - $activeleases))
+actwarn=$(($totalleases * 75 / 100))
+actcrit=$(($totalleases * 90 / 100))
+
 #Output
-##Batman
-echo "0 Batman-Version Version=$bat_version; $bat_version"
-list=$(ls -F /sys/kernel/debug/batman_adv|grep /);
-for i in $list;
-do z=$(ls /sys/kernel/debug/batman_adv/$i|wc -l);
-if [ $z -ge 9 ]; then b=$(echo $i|cut -d '/' -f1);
-router=$(($(batctl -m $b o|wc -l)-2));
-clients=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/$b/transtable_global);
-gateways=$(($(batctl -m $b gwl|wc -l)-1));
-ips=$(($(batctl -m $b dc|wc -l)-2));
-wlow=$(bc -l <<< "scale=0; $router*20/100");
-clow=$(bc -l <<< "scale=0; $router*5/100");
-wlimit=$(bc -l <<< "scale=0; $router*5");
-climit=$(bc -l <<< "scale=0; $router*10");
-leases=$(/opt/eulenfunk/dhcpleases|grep "^| Total"|cut -d":" -f2|sed s/\ //)
-echo "P Batman-$b Router=$router.0;5:250;1:500|Clients=$clients.0;$wlow.0:$wlimit.0;$clow.0:$climit.0|Gateways=$gateways.0;0:3;0:5;|IPs=$ips.0";
-fi;
-done
-##Fastd
-echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
-list=$(ls -F /etc/fastd|grep /|cut -d '/' -f 1);for i in $list; do clients=$(nc -U $(cat /etc/fastd/$i/fastd.conf|grep 'status socket'|cut -d '"' -f 2)|grep '"established"' -o|wc -l); interface=$(cat /etc/fastd/$i/fastd.conf|grep interface|cut -d '"' -f 2); mtu=$(cat /etc/fastd/$i/fastd.conf|grep mtu|cut -d ' ' -f 2|cut -d ';' -f1);port=$(cat /etc/fastd/$i/fastd.conf|grep bind|cut -d ':' -f 2|cut -d ' ' -f1);limit=$(cat /etc/fastd/$i/fastd.conf|grep 'peer limit'|cut -d ' ' -f 3|cut -d ';' -f1);climit=$(bc -l <<< "scale=0; $limit*95/100");wlimit=$(bc -l <<< "scale=0; $limit*90/100");clow=$(bc -l <<< "scale=0; $limit/100");wlow=$(bc -l <<< "scale=0; $limit*5/100");echo "P Fastd_Clients_$interface Clients=$clients.0;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit";done
 ##System
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
+
 ##Leases
-echo "P Dhcp-Leases Leases=$leases.0;5:1000;1:2000";
+echo "P Dhcp-Leases active-leases=$activeleases.0;5:$actwarn;1:$actcrit|remaining-leases=$remainingleases.0;50:65536;25:65536|total-leases=$totalleases";
+
+##Batman
+echo "0 Batman-Version Version=$bat_version; $bat_version"
+list=$(ls -F /sys/kernel/debug/batman_adv|grep /)
+for i in $list; do
+  z=$(ls /sys/kernel/debug/batman_adv/$i|wc -l)
+  if [ $z -ge 9 ]; then
+    b=$(echo $i|cut -d '/' -f1)
+    router=$(($(batctl -m $b o|wc -l)-2 ))
+    clients=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/$b/transtable_global)
+    gateways=$(( $(batctl -m $b gwl|wc -l) -1 ))
+    ips=$(( $(batctl -m $b dc|wc -l) - 2))
+    wlow=$(( $router * 20 / 100 ))
+    clow=$(( $router * 5 / 100 ))
+    wlimit=$(( $router * 5 ))
+    climit=$(( $router * 10 ))
+    echo "P Batman-$b Router=$router.0;5:250;1:500|Clients=$clients.0;$wlow.0:$wlimit.0;$clow.0:$climit.0|Gateways=$gateways.0;0:3;0:5;|IPs=$ips.0";
+   fi;
+ done
+
+##Fastd
+echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
+#list=$(ls -F /etc/fastd|grep /|cut -d '/' -f 1);for i in $list; do clients=$(nc -U $(cat /etc/fastd/$i/fastd.conf|grep 'status socket'|cut -d '"' -f 2)|grep '"established"' -o|wc -l); interface=$(cat /etc/fastd/$i/fastd.conf|grep interface|cut -d '"' -f 2); mtu=$(cat /etc/fastd/$i/fastd.conf|grep mtu|cut -d ' ' -f 2|cut -d ';' -f1);port=$(cat /etc/fastd/$i/fastd.conf|grep bind|cut -d ':' -f 2|cut -d ' ' -f1);limit=$(cat /etc/fastd/$i/fastd.conf|grep 'peer limit'|cut -d ' ' -f 3|cut -d ';' -f1);climit=$(bc -l <<< "scale=0; $limit*95/100");wlimit=$(bc -l <<< "scale=0; $limit*90/100");clow=$(bc -l <<< "scale=0; $limit/100");wlow=$(bc -l <<< "scale=0; $limit*5/100");echo "P Fastd_Clients_$interface Clients=$clients;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit";done
+fastdp=/etc/fastd
+list=$(ls -F $fastdp|grep /|cut -d '/' -f 1)
+for fasti in $list ; do
+  clients=$(nc -U $(cat $fastdp/$fasti/fastd.conf|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i 'status socket'|cut -d '"' -f 2)|grep '"established"' -o|wc -l);
+  interface=$(confline $fastdp/$fasti/fastd.conf interface|cut -d '"' -f 2)
+  mtu=$(cat $fastdp/$fasti/fastd.conf|grep mtu|cut -d ' ' -f 2|cut -d ';' -f1)
+  port=$(cat $fastdp/$fasti/fastd.conf|grep bind|cut -d ':' -f 2|cut -d ' ' -f1)
+  limit=$(cat $fastdp/$fasti/fastd.conf|grep 'peer limit'|cut -d ' ' -f 3|cut -d ';' -f1)
+  climit=$(( $limit * 95 / 100 ))
+  wlimit=$(( $limit * 90 / 100 ))
+  clow=$(( $limit / 100 ))
+  wlow=$(( $limit * 5 / 100 ))
+  echo "P Fastd_Clients_$interface Clients=$clients.0;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit"
+ done
