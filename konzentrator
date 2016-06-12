@@ -9,7 +9,7 @@ function confline # get first line from file $1 mathing $2, stripped of # and ; 
 }
 
 function conflines # get lines from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
-{import 
+{
  echo "$(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i $2)"
 }
 
