@@ -17,13 +17,13 @@ function ati # ipv4 to longint
  echo $ipno
 }
 
-#static data
+## static data
 bat_version=$(batctl -v);
 fastd_version=$(fastd -v|cut -d ' ' -f 2);
 kernel=$(uname -r);
 release=$(lsb_release -ds);
 
-#isc-dhcpd-server leases
+## isc-dhcpd-server leases
 dhcpconf=/etc/dhcp/dhcpd.conf
 dhcprange=$(confline $dhcpconf range)
 dhcpstart=$(echo $dhcprange|cut -d" " -f2)
@@ -34,8 +34,7 @@ remainingleases=$(($totalleases - $activeleases))
 actwarn=$(($totalleases * 75 / 100))
 actcrit=$(($totalleases * 90 / 100))
 
-#Output
-##Ubuntu-Status
+## ubuntu-Status
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
 ## ubuntu patch status
 nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "packages can be updated"|cut -d" " -f1)
@@ -46,10 +45,10 @@ if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
  fi
 echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:1;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:1;0:1"
 
-##Leases
+## Leases
 echo "P Dhcp-Leases active-leases=$activeleases.0;5:$actwarn;1:$actcrit|remaining-leases=$remainingleases.0;50:65536;25:65536|total-leases=$totalleases.0";
 
-##Batman
+## Batman
 echo "0 Batman-Version Version=$bat_version; $bat_version"
 list=$(ls -F /sys/kernel/debug/batman_adv|grep /)
 for i in $list; do
@@ -68,7 +67,7 @@ for i in $list; do
    fi;
  done
 
-##Fastd
+## Fastd
 echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
 fastdp=/etc/fastd
 list=$(ls -F $fastdp|grep /|cut -d '/' -f 1)
@@ -85,7 +84,7 @@ for fasti in $list ; do
   echo "P Fastd_Clients_$interface Clients=$clients.0;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit"
  done
 
-##Logins
+## Logins
 logincount=$(who|wc -l)
 logout="0 LocalUser CurrentLogins=$logincount.0; CurrentLogins:$logincount"
 i=0
