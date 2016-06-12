@@ -87,7 +87,7 @@ for fasti in $list ; do
 
 ##Logins
 logincount=$(who|wc -l)
-logout="0 LocalUser CurrentLogins=$logincount.0 "
+logout="0 LocalUser CurrentLogins=$logincount.0; CurrentLogins:$logincount"
 i=0
 TFILE="/tmp/$(basename $0).$$.tmp"
 who -u>$TFILE
