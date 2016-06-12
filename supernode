@@ -39,7 +39,7 @@ actcrit=$(($totalleases * 90 / 100))
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
 
 ##Leases
-echo "P Dhcp-Leases active-leases=$activeleases.0;5:$actwarn;1:$actcrit|remaining-leases=$remainingleases.0;50:65536;25:65536|total-leases=$totalleases";
+echo "P Dhcp-Leases active-leases=$activeleases.0;5:$actwarn;1:$actcrit|remaining-leases=$remainingleases.0;50:65536;25:65536|total-leases=$totalleases.0";
 
 ##Batman
 echo "0 Batman-Version Version=$bat_version; $bat_version"
