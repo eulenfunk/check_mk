@@ -33,6 +33,10 @@ while read line; do
     value=$(echo $values|cut -d" " -f1|tr -d "°C():;+,=-")
     high=$(echo $values|cut -d"h" -f2-10|cut -d" " -f3|tr -d "°C():;+,=-")
     crit=$(echo $values|cut -d"r" -f2-10|cut -d" " -f3|tr -d "°C():;+,=-")
+    if ( [[ $key == *power* ]] || [[ $key == *pwr* ]] ) ; then #TDP values are tight!
+      high=$( bc <<< "$high + 10")
+      crit=$( bc <<< "$crit + 10")
+     fi
     # fallback values
     if [[ $high != *"."* ]] ; then
       high=100
