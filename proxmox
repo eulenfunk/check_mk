@@ -7,6 +7,10 @@ px_vms_sum=$(($(qm list|wc -l)-1));
 px_vms_stopped=$(qm list|grep -c stopped);
 px_vms_started=$(qm list|grep -c running);
 
+restartrequired=0
+if [ -x  /var/run/reboot-required.pkgs ] ; then
+rebootrequired=$(cat /var/run/reboot-required.pkgs|wc -l)
+
 #Temperature sensors
 TFILE="/tmp/$(basename $0).$$.tmp"
 /usr/bin/sensors > $TFILE
@@ -38,3 +42,4 @@ rm $TFILE
 echo "0 Proxmox_Version Version=$px_version;"
 echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
 echo $(echo $temper|sed 's/|$//')
+echo "0 Debian-Patchstatus Reboot-Waiting=$rebootrequired.0;0:0.9;0:0.9 Reboot-Waiting:$rebootrequired"
