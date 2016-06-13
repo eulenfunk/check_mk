@@ -14,9 +14,11 @@ if [ -x  /var/run/reboot-required.pkgs ] ; then
   reboot=$(cat /var/run/reboot-required.pkgs|wc -l)
  fi
 supdates=0
-supdates=$(apt-get upgrade -s | grep  ^Security |wc -l)
+supdates=$(apt-get upgrade -s 2>/dev/null| grep ^Security |wc -l)
 nupdates=0
-nupdates=$(apt-get upgrade -s | grep ^Inst |wc -l)
+nupdates=$(apt-get upgrade -s 2>/dev/null| grep ^Inst |wc -l)
+
+
 
 
 # Temperature sensors
