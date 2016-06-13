@@ -1,17 +1,25 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
 
-#Get data
+export LANG=de_DE.UTF-8
+
+# Get data
 px_version=$(pveversion);
 px_vms_sum=$(($(qm list|wc -l)-1));
 px_vms_stopped=$(qm list|grep -c stopped);
 px_vms_started=$(qm list|grep -c running);
 
-restartrequired=0
+reboot=0
 if [ -x  /var/run/reboot-required.pkgs ] ; then
-rebootrequired=$(cat /var/run/reboot-required.pkgs|wc -l)
+  reboot=$(cat /var/run/reboot-required.pkgs|wc -l)
+ fi
+supdates=0
+supdates=$(apt-get upgrade -s | grep  ^Security |wc -l)
+nupdates=0
+nupdates=$(apt-get upgrade -s | grep ^Inst |wc -l)
 
-#Temperature sensors
+
+# Temperature sensors
 TFILE="/tmp/$(basename $0).$$.tmp"
 /usr/bin/sensors > $TFILE
 temper="P LMsensors "
@@ -38,8 +46,8 @@ while read line; do
 rm $TFILE
 
 
-#Output
+# Output
 echo "0 Proxmox_Version Version=$px_version;"
 echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
 echo $(echo $temper|sed 's/|$//')
-echo "0 Debian-Patchstatus Reboot-Waiting=$rebootrequired.0;0:0.9;0:0.9 Reboot-Waiting:$rebootrequired"
+echo "P Debian-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:0.5;0:1"
