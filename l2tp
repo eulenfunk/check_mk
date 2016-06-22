@@ -24,12 +24,12 @@ osversion=$(lsb_release -a|grep Description|cut -d: -f2|xargs)
 nupdates=0
 supdates=0
 if [[ $osversion = "Ubuntu 14.04"* ]] ; then
-  nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "packages can be updated"|cut -d" " -f1)
-  supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "updates are security updates"|cut -d" " -f1)
+  nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep -i 'packages\ can\ be\ updated\|Software-Pakete'|cut -d" " -f1)
+  supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep -i 'updates\ are\ security\ updates\|Sicherheitsaktualisierungen'|cut -d" " -f1)
  fi
 if [[ $osversion = "Ubuntu 16.04"* ]] ; then
-  nupdates=$(cat /var/lib/update-notifier/updates-available|grep -i "Software-Pakete"|cut -d" " -f1)
-  supdates=$(cat /var/lib/update-notifier/updates-available|grep -i "Sicherheitsaktualisierungen"|cut -d" " -f1)
+  nupdates=$(cat /var/lib/update-notifier/updates-available|grep -i 'packages\ can\ be\ updated\|Software-Pakete'|cut -d" " -f1)
+  supdates=$(cat /var/lib/update-notifier/updates-available|grep -i 'updates\ are\ security\ updates\|Sicherheitsaktualisierungen'|cut -d" " -f1)
  fi
 reboot=0
 if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
