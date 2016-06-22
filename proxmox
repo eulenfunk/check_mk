@@ -56,4 +56,4 @@ rm $TFILE
 echo "0 Proxmox_Version Version=$px_version;"
 echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
 echo $(echo $temper|sed 's/|$//')
-echo "P Debian-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0;15|Reboot-waiting=$reboot.0;0:0.5;0:1"
+echo "P Debian-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0:15|Reboot-waiting=$reboot.0;0:0.5;0:1"
