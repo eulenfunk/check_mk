@@ -23,39 +23,22 @@ fastd_version=$(fastd -v|cut -d ' ' -f 2);
 kernel=$(uname -r);
 release=$(lsb_release -ds);
 
-## isc-dhcpd-server leases
-dhcpconf=/etc/dhcp/dhcpd.conf
-dhcprange=$(confline $dhcpconf range)
-dhcpstart=$(echo $dhcprange|cut -d" " -f2)
-dhcpend=$(echo $dhcprange|cut -d" " -f3)
-totalleases=$(($(ati $dhcpend) - $(ati $dhcpstart)))
-activeleases=$(/opt/eulenfunk/dhcpleases|grep "^| Total"|cut -d":" -f2|sed s/\ //)
-remainingleases=$(($totalleases - $activeleases))
-actwarn=$(($totalleases * 75 / 100))
-actcrit=$(($totalleases * 90 / 100))
 
 ## ubuntu-Status
+bat_version=$(batctl -v);
+fastd_version=$(fastd -v|cut -d ' ' -f 2);
+kernel=$(uname -r);
+release=$(lsb_release -ds);
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
 ## ubuntu patch status
-osversion=$(lsb_release -a|grep Description|cut -d: -f2|xargs)
-nupdates=0
-supdates=0
-if [[ $osversion = "Ubuntu 14.04"* ]] ; then
-  nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep -i 'packages\ can\ be\ updated\|Software-Pakete'|cut -d" " -f1)
-  supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep -i 'updates\ are\ security\ updates\|Sicherheitsaktualisierungen'|cut -d" " -f1)
- fi
-if [[ $osversion = "Ubuntu 16.04"* ]] ; then
-  nupdates=$(cat /var/lib/update-notifier/updates-available|grep -i 'packages\ can\ be\ updated\|Software-Pakete'|cut -d" " -f1)
-  supdates=$(cat /var/lib/update-notifier/updates-available|grep -i 'updates\ are\ security\ updates\|Sicherheitsaktualisierungen'|cut -d" " -f1)
- fi
+nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "packages can be updated"|cut -d" " -f1)
+supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "updates are security updates"|cut -d" " -f1)
 reboot=0
 if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
   reboot=$(/usr/lib/update-notifier/update-motd-reboot-required|grep \*\*\**\*\*\*|wc -l)
  fi
-echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.9;0:2|RegularUpdates-waiting=$nupdates.0;0:10;0:15|Reboot-waiting=$reboot.0;0:0.9;0:1"
+echo "P Ubuntu-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0:15|Reboot-waiting=$reboot.0;0:0.5;0:1"
 
-## Leases
-echo "P Dhcp-Leases active-leases=$activeleases.0;5:$actwarn;1:$actcrit active:$activeleases remaining:$remainingleases pool=$totalleases";
 
 ## Batman
 echo "0 Batman-Version Version=$bat_version; $bat_version"
@@ -92,6 +75,22 @@ for fasti in $list ; do
   wlow=$(( $limit * 5 / 100 ))
   echo "P Fastd_Clients_$interface Clients=$clients.0;$wlow:$wlimit;$clow:$climit; Interface: $interface, Port: $port, MTU: $mtu, Peer Limit: $limit"
  done
+
+## isc-dhcpd-server leases
+# needs script https://github.com/eulenfunk/scripts/blob/master/dhcpleases
+if [ -r /opt/eulenfunk/dhcpleases ] ; then
+  dhcpconf=/etc/dhcp/dhcpd.conf
+  dhcprange=$(confline $dhcpconf range)
+  dhcpstart=$(echo $dhcprange|cut -d" " -f2)
+  dhcpend=$(echo $dhcprange|cut -d" " -f3)
+  totalleases=$(($(ati $dhcpend) - $(ati $dhcpstart)))
+  activeleases=$(/opt/eulenfunk/dhcpleases|grep "^| Total"|cut -d":" -f2|sed s/\ //)
+  remainingleases=$(($totalleases - $activeleases))
+  actwarn=$(($totalleases * 75 / 100))
+  actcrit=$(($totalleases * 90 / 100))
+  echo "P Dhcp-Leases active-leases=$activeleases.0;5:$actwarn;1:$actcrit active:$activeleases remaining:$remainingleases pool=$totalleases";
+ fi
+
 
 ## Logins
 logincount=$(who|wc -l)
