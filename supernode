@@ -4,7 +4,7 @@ export LANG=de_DE.UTF-8
 
 function confline # get first line from file $1 mathing $2, stripped of # and ; comment lines, stripped spaces and tabs down to spaces, remove trailing ;
 {
- echo $(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i $2|head -n 1)
+ echo $(cat $1|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i "$2"|head -n 1)
 }
 
 function ati # ipv4 to longint
@@ -66,9 +66,9 @@ list=$(ls -F $fastdp|grep /|cut -d '/' -f 1)
 for fasti in $list ; do
   clients=$(nc -U $(cat $fastdp/$fasti/fastd.conf|grep -v '^$\|^\s*\#'|sed -e "s/[[:space:]]\+/ /g"|sed s/^\ //|sed s/\;//|grep -i 'status socket'|cut -d '"' -f 2)|grep '"established"' -o|wc -l);
   interface=$(confline $fastdp/$fasti/fastd.conf interface|cut -d '"' -f 2)
-  mtu=$(cat $fastdp/$fasti/fastd.conf|grep mtu|cut -d ' ' -f 2|cut -d ';' -f1)
-  port=$(cat $fastdp/$fasti/fastd.conf|grep bind|cut -d ':' -f 2|cut -d ' ' -f1)
-  limit=$(cat $fastdp/$fasti/fastd.conf|grep 'peer limit'|cut -d ' ' -f 3|cut -d ';' -f1)
+  mtu=$(confline $fastdp/$fasti/fastd.conf mtu|cut -d ' ' -f 2|cut -d ';' -f1)
+  port=$(confline $fastdp/$fasti/fastd.conf bind|cut -d ':' -f 2|cut -d ' ' -f1)
+  limit=$(confline $fastdp/$fasti/fastd.conf 'peer limit'|cut -d ' ' -f 3|cut -d ';' -f1)
   climit=$(( $limit * 95 / 100 ))
   wlimit=$(( $limit * 90 / 100 ))
   clow=$(( $limit / 100 ))
