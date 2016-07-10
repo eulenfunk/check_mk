@@ -23,12 +23,7 @@ fastd_version=$(fastd -v|cut -d ' ' -f 2);
 kernel=$(uname -r);
 release=$(lsb_release -ds);
 
-
 ## ubuntu-Status
-bat_version=$(batctl -v);
-fastd_version=$(fastd -v|cut -d ' ' -f 2);
-kernel=$(uname -r);
-release=$(lsb_release -ds);
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
 ## ubuntu patch status
 nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep "packages can be updated"|cut -d" " -f1)
