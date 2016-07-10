@@ -189,9 +189,11 @@ echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configu
 ## Conntrack
 conntrack=$(conntrack -C);
 conntrack_limit=$(sysctl -a 2>/dev/null |grep net.nf_conntrack_max|cut -d ' ' -f 3);
-conntrack_remain=$(( $conntrack_limit - $conntrack ))
+conntrack_remain=$(echo $conntrack_limit - $conntrack|bc)
 wlow=0.1
 clow=1.1
-wlimit=$(( $conntrack_limit * 10 / 7 ))
-climit=$(( $conntrack_limit * 10 / 9 ))
-echo "P Conntrack conntrack=$conntrack.0;$wlow:$wlimit;$clow:$climit|conntrack_remain=$conntrack_remain.0 Conntrack:$conntrack Conntrack-Remain:$conntrack_remain Conntrack-Limit:$conntrack_limit"
+wlimit=$(echo $conntrack_limit *0.7|bc)
+climit=$(echo $conntrack_limit *0.9|bc)
+wrlimit=$(echo $conntrack_limit *0.3|bc)
+crlimit=$(echo $conntrack_limit *0.1|bc)
+echo "P Conntrack conntrack=$conntrack.0;$wlow:$wlimit;$clow:$climit|conntrack_remain=$conntrack_remain.0;$wrlimit:$conntrack_limit;$crlimit:$conntrack_limit; Conntrack:$conntrack Conntrack-Remain:$conntrack_remain Conntrack-Limit:$conntrack_limit"
