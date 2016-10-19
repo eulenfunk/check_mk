@@ -3,12 +3,7 @@
 
 export LANG=de_DE.UTF-8
 
-# Get data
-px_version=$(pveversion);
-px_vms_sum=$(($(qm list|wc -l)-1));
-px_vms_stopped=$(qm list|grep -c stopped);
-px_vms_started=$(qm list|grep -c running);
-
+# updates
 reboot=0
 if [ -x  /var/run/reboot-required.pkgs ] ; then
   reboot=$(cat /var/run/reboot-required.pkgs|wc -l)
@@ -17,8 +12,6 @@ supdates=0
 supdates=$(apt-get upgrade -s 2>/dev/null| grep ^Security |wc -l)
 nupdates=0
 nupdates=$(apt-get upgrade -s 2>/dev/null| grep ^Inst |wc -l)
-
-
 
 
 # Temperature sensors
@@ -40,10 +33,10 @@ while read line; do
       crit=$( bc <<< "$crit + 10")
      fi
     # fallback values
-    if [[ $high != *"."* ]] ; then
+    if [[ $high != *"."* ]] || [[ $high == "0.0" ]]; then
       high=100
      fi
-    if [[ $crit != *"."* ]] ; then
+    if [[ $crit != *"."* ]] || [[ $crit == "0.0" ]]; then
       crit=120
      fi
     temper="$temper$prefix-$key=$value;0.1:$high;0.1:$crit|"
@@ -52,8 +45,27 @@ while read line; do
 rm $TFILE
 
 
-# Output
-echo "0 Proxmox_Version Version=$px_version;"
-echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
-echo $(echo $temper|sed 's/|$//')
-echo "P Debian-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0:15|Reboot-waiting=$reboot.0;0:0.5;0:1"
+# QEMU-VMs
+if which qm >/dev/null ; then
+    px_version=$(pveversion);
+    pvetfile="/tmp/$(basename $0).$$.tmp"
+    qm list > $pvetfile
+    px_vms_sum=$(($(cat $pvetfile|wc -l)-1));
+    px_vms_stopped=$(cat $pvetfile|grep -c stopped);
+    px_vms_started=$(cat $pvetfile|grep -c running);
+    echo "0 Proxmox_Version Version=$px_version;"
+    echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
+    echo $(echo $temper|sed 's/|$//')
+    echo "P Debian-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0:15|Reboot-waiting=$reboot.0;0:0.5;0:1"
+    cat $pvetfile | grep -v VMID | while read L
+    do
+        PID=$(echo $L | awk -- '{print $6}')
+        if [ $PID -gt 0 ]; then
+            DATA=$(top -p $PID -n 1 -b | tail -n 1 |awk -- '{print $5" "$6" "$7" "$9" "$10}')
+        else
+            DATA=""
+        fi
+       # echo $L" "$DATA
+    done
+    rm $pvetfile;
+fi
