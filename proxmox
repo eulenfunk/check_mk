@@ -12,6 +12,7 @@ supdates=0
 supdates=$(apt-get upgrade -s 2>/dev/null| grep ^Security |wc -l)
 nupdates=0
 nupdates=$(apt-get upgrade -s 2>/dev/null| grep ^Inst |wc -l)
+echo "P Debian-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0:15|Reboot-waiting=$reboot.0;0:0.5;0:1"
 
 
 # Temperature sensors
@@ -43,7 +44,7 @@ while read line; do
    fi
  done <$TFILE
 rm $TFILE
-
+echo $(echo $temper|sed 's/|$//')
 
 # QEMU-VMs
 if which qm >/dev/null ; then
@@ -55,8 +56,6 @@ if which qm >/dev/null ; then
     px_vms_started=$(cat $pvetfile|grep -c running);
     echo "0 Proxmox_Version Version=$px_version;"
     echo "0 Proxmox_VMs Started=$px_vms_started|Stopped=$px_vms_stopped|Gesamt=$px_vms_sum; $px_vms_started von $px_vms_sum VMs laufen"
-    echo $(echo $temper|sed 's/|$//')
-    echo "P Debian-Patchstatus SecurityUpdates-waiting=$supdates.0;0:0.5;0:1|RegularUpdates-waiting=$nupdates.0;0:10;0:15|Reboot-waiting=$reboot.0;0:0.5;0:1"
     cat $pvetfile | grep -v VMID | while read L
     do
         PID=$(echo $L | awk -- '{print $6}')
