@@ -1,7 +1,11 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
 
-bat_interfaces=$(ip l|grep -F 'pfifo_fast master' | sed -r -e 's/.+pfifo_fast master //' -e 's/ state .+//')
+#bat_interfaces=$(ip l|grep -F 'pfifo_fast master' | sed -r -e 's/.+pfifo_fast master //' -e 's/ state .+//')
+bat_interfaces=$(ip l|grep -F 'master br' | sed -r -e 's/^[0-9]+: //' -e 's/: <.+//')
+
+bat_interfaces_num=$(echo $bat_interfaces|wc -w)
+bat_interfaces_low_traffic='^bat-(erk|han|hlg|mon|lgf|wlf)$'
 
 #Get data
 bat_version=$(batctl -v);
@@ -19,9 +23,15 @@ for intf in $bat_interfaces; do
   bat_ips[$intf]=$(($(batctl -m $intf dc|wc -l)-2));
   bat_ips_wrong[$intf]=$(($(batctl -m $intf dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cut -d ':' -f 2|cut -d '.' -f 1))-2));
   fastd_inst[$intf]=$(ps aux|grep "/usr/bin/fastd .* ${fastd_config[$intf]}" |grep -Fvc ' grep ')
-  fastd_peer_limit[$intf]=$(grep -F 'peer limit' ${fastd_config[$intf]} | cut -d ' ' -f 3 | cut -d ';' -f 1);
+  fastd_peer_limit[$intf]=$(grep '^peer limit' ${fastd_config[$intf]} | cut -d ' ' -f 3 | cut -d ';' -f 1);
   CpR[$intf]=$(echo "scale=2 ; ${bat_clients[$intf]}/${bat_router[$intf]}" | bc);
+
+  for array in bat_clients bat_ips bat_router bat_ips_wrong fastd_inst; do
+    eval $(echo $array[sum]='$(( ${'$array[sum]'}' + '${'$array['$intf']'} ))')
+  done
 done
+
+CpR[sum]=$(echo "scale=2 ; ${bat_clients[sum]}/${bat_router[sum]}" | bc);
 
 #Neanderfunk fastd_clients=$(/etc/fastd/fastd-statistics.py -s /tmp/fastd.sock | grep Clients | cut -d ' ' -f 3);
 dhcp_leases=$(grep "^lease" /var/lib/dhcp/dhcpd.leases |sort |uniq |wc -l);
@@ -37,23 +47,37 @@ else
   multiple_interfaces=true
 fi
 
-for intf in $bat_interfaces; do
-  if [ $multiple_interfaces ]; then
+for intf in $bat_interfaces sum; do
+  if [ $multiple_interfaces -a "$intf" != sum ]; then
     suffix_label=" ($intf)"
+    suffix_name="-$intf"
+  else
+    suffix_label=""
+    suffix_name=""
   fi
 
-  echo "P Batman-Gateways Gateways$suffix_label=${bat_gateways[$intf]};3;5;"
-  echo "P Batman-Router Router$suffix_label=${bat_router[$intf]};10:450;5:500;"
-  echo "P Batman-Clients Clients$suffix_label=${bat_clients[$intf]};5:2000;0:25000; ${bat_clients[$intf]} Clients";
-  echo "P Batman-IPs IP-Adressen$suffix_label=${bat_ips[$intf]}|Falsche-Adressen=${bat_ips_wrong[$intf]};5;50;";
+
+  if echo $intf | grep -qE $bat_interfaces_low_traffic; then
+    echo "P Batman-Router$suffix_name Router=${bat_router[$intf]};0:450;0:500;"
+    echo "P Batman-Clients$suffix_name Clients=${bat_clients[$intf]};0:2000;0:25000; ${bat_clients[$intf]} Clients";
+    echo "P Clients-per-Router$suffix_name Ratio=${CpR[$intf]};0.0:5;0.0:10;"
+  else
+    echo "P Batman-Router$suffix_name Router=${bat_router[$intf]};10:450;5:500;"
+    echo "P Batman-Clients$suffix_name Clients=${bat_clients[$intf]};5:2000;0:25000; ${bat_clients[$intf]} Clients";
+    echo "P Clients-per-Router$suffix_name Ratio=${CpR[$intf]};0.5:5;0.1:10;"
+  fi
+
+  echo "P Batman-IPs$suffix_name IP-Adressen=${bat_ips[$intf]}|Falsche-Adressen=${bat_ips_wrong[$intf]};5;50;";
   ##Fastd
-  echo "0 Fastd_Instanzen Instanzen$suffix_label=${fastd_inst[$intf]};0:5;"
-  echo "P Fastd_Client_Peer_limit Limit$suffix_label=${fastd_peer_limit[$intf]};50:500;0:1000;"
-  #Neanderfunk echo "0 Fastd_Clients Clients$suffix_label=${fastd_clients[$intf]};10:150;5:200;"
+  echo "0 Fastd_Instanzen$suffix_name Instanzen=${fastd_inst[$intf]};0:5;"
+  #Neanderfunk echo "0 Fastd_Clients$suffix_name Clients=${fastd_clients[$intf]};10:150;5:200;"
   ##FF
-  echo "P Clients-per-Router Ratio$suffix_label=${CpR[$intf]};0.5:5;0.1:10;"
+  if [ "$intf" != sum ]; then
+    echo "P Batman-Gateways$suffix_name Gateways=${bat_gateways[$intf]};3;5;"
+    echo "P Fastd_Client_Peer_limit$suffix_name Limit=${fastd_peer_limit[$intf]};50:500;0:1000;"
+  fi
 done
-echo "0 Fastd_Version Version$suffix_label=$fastd_version; Fastd $fastd_version ";
+echo "0 Fastd_Version Version=$fastd_version; Fastd $fastd_version ";
 ##DHCP
 echo "P DHCP-Leases Leases=$dhcp_leases;10:8000;5:10000;"
 #echo "P VPNs-per-Router Ratio=$VPN_Ratio;0.3:0.9;0.2:1;"
