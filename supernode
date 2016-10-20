@@ -1,7 +1,9 @@
 #!/bin/bash
 #/usr/lib/check_mk_agent/local
 
-bat_interfaces=$(ip l|grep -F 'pfifo_fast master' | sed -r -e 's/.+pfifo_fast master //' -e 's/ state .+//')
+#bat_interfaces=$(ip l|grep -F 'pfifo_fast master' | sed -r -e 's/.+pfifo_fast master //' -e 's/ state .+//')
+bat_interfaces=$(ip l|grep -F 'master br' | sed -r -e 's/^[0-9]+: //' -e 's/: <.+//')
+
 bat_interfaces_num=$(echo $bat_interfaces|wc -w)
 bat_interfaces_low_traffic='^bat-(erk|han|hlg|mon|lgf|wlf)$'
 
@@ -21,7 +23,7 @@ for intf in $bat_interfaces; do
   bat_ips[$intf]=$(($(batctl -m $intf dc|wc -l)-2));
   bat_ips_wrong[$intf]=$(($(batctl -m $intf dc|grep -v -c $(ifconfig br0|grep 'inet addr:'|cut -d ':' -f 2|cut -d '.' -f 1))-2));
   fastd_inst[$intf]=$(ps aux|grep "/usr/bin/fastd .* ${fastd_config[$intf]}" |grep -Fvc ' grep ')
-  fastd_peer_limit[$intf]=$(grep -F 'peer limit' ${fastd_config[$intf]} | cut -d ' ' -f 3 | cut -d ';' -f 1);
+  fastd_peer_limit[$intf]=$(grep '^peer limit' ${fastd_config[$intf]} | cut -d ' ' -f 3 | cut -d ';' -f 1);
   CpR[$intf]=$(echo "scale=2 ; ${bat_clients[$intf]}/${bat_router[$intf]}" | bc);
 
   for array in bat_clients bat_ips bat_router bat_ips_wrong fastd_inst; do
