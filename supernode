@@ -103,4 +103,4 @@ while read line; do
   logout="$logout\n login-$i-user:$user login-$i-tty:$tty login-$i-idle:$idle login-$i-source:$ip"
  done<$TFILE
 rm $TFILE
-echo "$logout"
+#echo "$logout"
