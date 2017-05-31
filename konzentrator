@@ -196,4 +196,4 @@ wlimit=$(echo $conntrack_limit *0.7|bc)
 climit=$(echo $conntrack_limit *0.9|bc)
 wrlimit=$(echo $conntrack_limit *0.3|bc)
 crlimit=$(echo $conntrack_limit *0.1|bc)
-echo "P Conntrack conntrack=$conntrack.0;$wlow:$wlimit;$clow:$climit|conntrack_remain=$conntrack_remain.0;$wrlimit:$conntrack_limit;$crlimit:$conntrack_limit; Conntrack:$conntrack Conntrack-Remain:$conntrack_remain Conntrack-Limit:$conntrack_limit"
+echo "P Conntrack conntrack=$conntrack.0;$wlow:$wlimit;$clow:$climit|conntrack_remain=$conntrack_remain.0;$wrlimit:$conntrack_limit;$crlimit:$conntrack_limit Conntrack:$conntrack Conntrack-Remain:$conntrack_remain Conntrack-Limit:$conntrack_limit"
