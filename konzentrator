@@ -19,17 +19,10 @@ release=$(lsb_release -ds);
 ## ubuntu-Status
 echo "0 Ubuntu-Release Ubuntu-Release=$release; $release - Kernel $kernel"
 ## ubuntu patch status
-osversion=$(lsb_release -a|grep Description|cut -d: -f2|xargs)
 nupdates=0
 supdates=0
-if [[ $osversion = "Ubuntu 14.04"* ]] ; then
-  nupdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep -i 'packages\ can\ be\ updated\|Software-Pakete'|cut -d" " -f1)
-  supdates=$(/usr/lib/update-notifier/update-motd-updates-available|grep -i 'updates\ are\ security\ updates\|Sicherheitsaktualisierungen'|cut -d" " -f1)
- fi
-if [[ $osversion = "Ubuntu 16.04"* ]] ; then
   nupdates=$(cat /var/lib/update-notifier/updates-available|grep -i 'packages\ can\ be\ updated\|Software-Pakete'|cut -d" " -f1)
   supdates=$(cat /var/lib/update-notifier/updates-available|grep -i 'updates\ are\ security\ updates\|Sicherheitsaktualisierungen'|cut -d" " -f1)
- fi
 reboot=0
 if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
   reboot=$(/usr/lib/update-notifier/update-motd-reboot-required|grep \*\*\**\*\*\*|wc -l)
@@ -99,11 +92,13 @@ while read line; do
     link=$(echo $line|cut -d" " -f4)
     since=$(echo $line|cut -d" " -f5)
     linkstate=$(echo $line|cut -d" " -f6)
-    linkok=0
-    if [ $linkstate = "Established" ] ; then
-      linkok=1;
+#    linkok=0
+state=2 
+   if [ $linkstate = "Established" ] ; then
+ #     linkok=1;
       birdlink="UP"
       bird4up=$(( $bird4up + 1 ))
+state=0
      else
       birdlink="DOWN"
      fi
@@ -125,7 +120,8 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird4l-$remote Bird4-$remote=$linkok.0;0.1:1;0:1 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+echo "$state bird4l-$remote Bird4-$remote=$linkok.0 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+
    fi
  done<$TFILE
 rm $TFILE
@@ -153,11 +149,13 @@ while read line; do
     link=$(echo $line|cut -d" " -f4)
     since=$(echo $line|cut -d" " -f5)
     linkstate=$(echo $line|cut -d" " -f6)
-    linkok=0
+  #  linkok=0
+state=2
     if [ $linkstate = "Established" ] ; then
-      linkok=1;
+   #   linkok=1;
       birdlink="UP"
       bird6up=$(( $bird6up + 1 ))
+state=0
      else
       birdlink="DOWN"
      fi
@@ -179,7 +177,8 @@ while read line; do
      ExportUp=$(confline $TFILE2 "Export withdraws:")
      ExpUpWit=$(echo $routes|cut -d" " -f6)
      rm $TFILE2
-    echo "P bird6l-$remote Bird6-$remote=$linkok.0;0.1:1;0:1 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+echo "$state bird6l-$remote Bird6-$remote=$linkok.0 linkstate:$linkstate since:$since preference:$preference preferred:$preferred imported:$imported exported:$exported ImpUpAcp:$ImpUpAcp ImpUpWit:$ImpUpWit ExpUpAcp:$ExpUpAcp ExUpWit:$ExpUpWit"
+
    fi
  done<$TFILE
 rm $TFILE
