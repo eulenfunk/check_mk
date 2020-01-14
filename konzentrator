@@ -64,10 +64,10 @@ while read -r line; do
   mtu=$(ip link|grep $remote|cut -d" " -f5)
   echo "P tunl_$remote link-$remote=$state.0;0:2;0:2; link-$remote:$tunnelst mtu:$mtu"
  done <<< "$tunnel"
-wlow=$(( $tunnelzahl ))
-clow=$(( $tunnelzahl * 10 / 20 + 1 ))
-wlimit=$(( $tunnelzahl ))
-climit=$(( $tunnelzahl ))
+wlow=$(( $tunnelzahl - 2))
+clow=$(( $tunnelzahl - 1))
+wlimit=$(( $tunnelzahl + 1))
+climit=$(( $tunnelzahl + 1))
 echo "P Tunlinks Tunnel-Up=$tunnelup.0;$wlow:$wlimit;$clow:$climit|Tunnel-Configured=$tunnelzahl.0 Tunnel-Configured:$tunnelzahl Tunnel-Up:$tunnelup"
 
 ## Bird4
@@ -78,10 +78,10 @@ bird4loaded=0
 bird4up=0
 bird4imported=0
 bird4exported=0
-wlow=$(( $bird4confzahl ))
-clow=$(( $bird4confzahl * 10 / 20 + 1 ))
-wlimit=$(( $bird4confzahl ))
-climit=$(( $bird4confzahl ))
+wlow=$(( $bird4confzahl - 2 ))
+clow=$(( $bird4confzahl - 1 ))
+wlimit=$(( $bird4confzahl + 1 ))
+climit=$(( $bird4confzahl + 1 ))
 TFILE="/tmp/$(basename $0).$$.tmp"
 birdc s p>$TFILE
 while read line; do
@@ -92,10 +92,8 @@ while read line; do
     link=$(echo $line|cut -d" " -f4)
     since=$(echo $line|cut -d" " -f5)
     linkstate=$(echo $line|cut -d" " -f6)
-#    linkok=0
 state=2 
    if [ $linkstate = "Established" ] ; then
- #     linkok=1;
       birdlink="UP"
       bird4up=$(( $bird4up + 1 ))
 state=0
@@ -125,7 +123,7 @@ echo "$state bird4l-$remote Bird4-$remote=$linkok.0 linkstate:$linkstate since:$
    fi
  done<$TFILE
 rm $TFILE
-echo "P Bird4links bird4-Up=$bird4up.0;$wlow:$wlimit;$clow:$climit|Bird4-Configured=$bird4confzahl.0|Bird4-Loaded=$bird4loaded.0;$bird4confzahl:$bird4confzahl;$bird4confzahl:$bird4confzahl|Bird4Imported=$bird4imported.0|Bird4Exported=$bird4exported.0 Up:$bird4up Configured:$bird4confzahl Loaded:$bird4loaded Imported:$bird4imported Exported:$bird4exported"
+echo "P Bird4links bird4-Up=$bird4up.0;$wlow:$wlimit;$clow:$climit|Bird4-Configured=$bird4confzahl.0|Bird4-Loaded=$bird4loaded.0;$(($bird4confzahl - 1)):$(($bird4confzahl + 1));$(($bird4confzahl - 1)):$(($bird4confzahl + 1))|Bird4Imported=$bird4imported.0|Bird4Exported=$bird4exported.0 Up:$bird4up Configured:$bird4confzahl Loaded:$bird4loaded Imported:$bird4imported Exported:$bird4exported"
 
 ## Bird6
 bird6conf=/etc/bird/bird6.conf
@@ -135,10 +133,10 @@ bird6loaded=0
 bird6up=0
 bird6imported=0
 bird6exported=0
-wlow=$(( $bird6confzahl ))
-clow=$(( $bird6confzahl * 10 / 20 + 1 ))
-wlimit=$(( $bird6confzahl ))
-climit=$(( $bird6confzahl ))
+wlow=$(( $bird6confzahl - 2))
+clow=$(( $bird6confzahl - 1))
+wlimit=$(( $bird6confzahl + 1))
+climit=$(( $bird6confzahl + 1))
 TFILE="/tmp/$(basename $0).$$.tmp"
 birdc6 s p>$TFILE
 while read line; do
@@ -149,10 +147,8 @@ while read line; do
     link=$(echo $line|cut -d" " -f4)
     since=$(echo $line|cut -d" " -f5)
     linkstate=$(echo $line|cut -d" " -f6)
-  #  linkok=0
 state=2
     if [ $linkstate = "Established" ] ; then
-   #   linkok=1;
       birdlink="UP"
       bird6up=$(( $bird6up + 1 ))
 state=0
@@ -182,7 +178,7 @@ echo "$state bird6l-$remote Bird6-$remote=$linkok.0 linkstate:$linkstate since:$
    fi
  done<$TFILE
 rm $TFILE
-echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configured=$bird6confzahl.0|Bird6-Loaded=$bird6loaded.0;$bird6confzahl:$bird6confzahl;$bird6confzahl:$bird6confzahl|Bird6Imported=$bird6imported.0|Bird6Exported=$bird6exported.0 Up:$bird6up Configured:$bird6confzahl Loaded:$bird6loaded Imported:$bird6imported Exported:$bird6exported"
+echo "P Bird6links bird6-Up=$bird6up.0;$wlow:$wlimit;$clow:$climit|Bird6-Configured=$bird6confzahl.0|Bird6-Loaded=$bird6loaded.0;$(($bird6confzahl - 1)):$(($bird6confzahl + 1));$(($bird6confzahl - 1)):$(($bird6confzahl + 1))|Bird6Imported=$bird6imported.0|Bird6Exported=$bird6exported.0 Up:$bird6up Configured:$bird6confzahl Loaded:$bird6loaded Imported:$bird6imported Exported:$bird6exported"
 
 
 ## Conntrack
