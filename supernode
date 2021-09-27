@@ -42,7 +42,7 @@ for i in $list; do
   z=$(ls /sys/kernel/debug/batman_adv/$i|wc -l)
   if [ $z -ge 9 ]; then
     b=$(echo $i|cut -d '/' -f1)
-    router=$(($(batctl -m $b o|wc -l)-2 ))
+    router=$(($(batctl -m $b o | uniq -s 2 -w 19 | wc -l)-2 ))
     clients=$(grep -cEo "\[.*W.*\]+" /sys/kernel/debug/batman_adv/$b/transtable_global)
     gateways=$(( $(batctl -m $b gwl|wc -l) -1 ))
     ips=$(( $(batctl -m $b dc|wc -l) - 2))
